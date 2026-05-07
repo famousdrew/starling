@@ -22,22 +22,12 @@ class TrayState(Enum):
 
 
 def _draw_icon(state: TrayState, level: float) -> Image.Image:
+    if state == TrayState.IDLE:
+        from .assets import app_icon
+        return app_icon(ICON_SIZE)
+
     img = Image.new("RGBA", (ICON_SIZE, ICON_SIZE), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
-
-    if state == TrayState.IDLE:
-        cx, cy = ICON_SIZE // 2, ICON_SIZE // 2
-        r = 30
-        # Green filled circle
-        draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(34, 139, 80, 255))
-        # White mic capsule
-        draw.rounded_rectangle([cx - 9, cy - 18, cx + 9, cy + 4], radius=9, fill=(255, 255, 255))
-        # White stand arc
-        draw.arc([cx - 15, cy - 6, cx + 15, cy + 16], 0, 180, fill=(255, 255, 255), width=3)
-        # White stem + base
-        draw.line([cx, cy + 16, cx, cy + 23], fill=(255, 255, 255), width=3)
-        draw.line([cx - 8, cy + 23, cx + 8, cy + 23], fill=(255, 255, 255), width=3)
-        return img
 
     color = (255, 60, 60) if state == TrayState.HANDS_FREE else (80, 220, 120)
 

@@ -92,7 +92,14 @@ if (Test-Path $corrDest) {
     Write-Ok "corrections.json installed to $corrDest"
 }
 
-# ── 8. Create shortcuts ───────────────────────────────────────────────────────
+# ── 8. Generate ICO file ──────────────────────────────────────────────────────
+Write-Step "Generating icon file..."
+& $python -c "from starling.assets import app_icon_ico_path; app_icon_ico_path()"
+if ($LASTEXITCODE -ne 0) { Write-Fail "Icon generation failed." }
+$icoPath = (Resolve-Path "starling\assets\icon.ico").Path
+Write-Ok "Icon generated: $icoPath"
+
+# ── 9. Create shortcuts ───────────────────────────────────────────────────────
 Write-Step "Creating shortcuts..."
 $repoPath = (Resolve-Path ".").Path
 
@@ -112,6 +119,7 @@ $desktopLink = $shell.CreateShortcut("$desktop\Starling.lnk")
 $desktopLink.TargetPath = "wscript.exe"
 $desktopLink.Arguments = "`"$launcherPath`""
 $desktopLink.WorkingDirectory = $repoPath
+$desktopLink.IconLocation = $icoPath
 $desktopLink.Description = "Starling voice dictation"
 $desktopLink.Save()
 Write-Ok "Desktop shortcut created"
@@ -122,11 +130,12 @@ $startLink = $shell.CreateShortcut("$startMenu\Starling.lnk")
 $startLink.TargetPath = "wscript.exe"
 $startLink.Arguments = "`"$launcherPath`""
 $startLink.WorkingDirectory = $repoPath
+$startLink.IconLocation = $icoPath
 $startLink.Description = "Starling voice dictation"
 $startLink.Save()
 Write-Ok "Start menu shortcut created"
 
-# ── 9. Done ───────────────────────────────────────────────────────────────────
+# ── 10. Done ──────────────────────────────────────────────────────────────────
 Write-Host ""
 Write-Host "  Setup complete." -ForegroundColor Green
 Write-Host "  The Parakeet model (~2.5 GB) will download on first run." -ForegroundColor Cyan

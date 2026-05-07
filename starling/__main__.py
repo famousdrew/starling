@@ -74,7 +74,11 @@ def main() -> None:
 
         hotkey = HotkeyMonitor(on_event=on_hotkey)
 
-        threading.Thread(target=transcriber.load, daemon=True).start()
+        threading.Thread(
+            target=transcriber.load,
+            kwargs={"on_status": stats_ui.splash_status, "on_ready": stats_ui.splash_ready},
+            daemon=True,
+        ).start()
         stats_ui.init(stats)
         tray.start()
         hotkey.start()

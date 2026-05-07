@@ -4,8 +4,8 @@ import sys
 import threading
 from datetime import datetime, timezone
 
-from PySide6.QtCore import Qt, QTimer, Signal, QObject
-from PySide6.QtGui import QColor, QFont, QPainter, QPen, QBrush
+from PySide6.QtCore import Qt, QTimer, Signal, QObject, QPropertyAnimation, QEasingCurve
+from PySide6.QtGui import QColor, QFont, QPainter, QPen, QBrush, QPixmap, QImage
 from PySide6.QtWidgets import (
     QApplication,
     QFrame,
@@ -166,6 +166,86 @@ def _stat_card(value: str, label: str) -> tuple[QFrame, QLabel]:
     lay.addWidget(val_lbl)
     lay.addWidget(lbl)
     return frame, val_lbl
+
+
+# ── splash screen ────────────────────────────────────────────────────────────
+
+class SplashScreen(QWidget):
+    def __init__(self) -> None:
+        super().__init__(None, Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setFixedSize(360, 180)
+        self.setStyleSheet(_STYLE)
+
+        # centre on screen
+        screen = QApplication.primaryScreen().availableGeometry()
+        self.move(
+            screen.center().x() - self.width() // 2,
+            screen.center().y() - self.height() // 2,
+        )
+
+        root = QVBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+
+        card = QFrame()
+        card.setObjectName("card")
+        card.setStyleSheet(f"""
+            QFrame {{
+                background: {SURFACE};
+                border: 1px solid {BORDER};
+                border-radius: 16px;
+            }}
+        """)
+        inner = QVBoxLayout(card)
+        inner.setContentsMargins(32, 24, 32, 24)
+        inner.setSpacing(12)
+        inner.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # icon row
+        icon_lbl = QLabel()
+        icon_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._update_icon(icon_lbl)
+        inner.addWidget(icon_lbl)
+
+        title = QLabel("Starling")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title.setStyleSheet(f"font-size: 22px; font-weight: 700; color: {TEXT};")
+        inner.addWidget(title)
+
+        self._status = QLabel("Starting up...")
+        self._status.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._status.setStyleSheet(f"font-size: 13px; color: {TEXT_DIM};")
+        inner.addWidget(self._status)
+
+        root.addWidget(card)
+        self._ready = False
+
+    def _update_icon(self, lbl: QLabel) -> None:
+        from .assets import app_icon
+        pil_img = app_icon(64)
+        data = pil_img.tobytes("raw", "RGBA")
+        qimg = QImage(data, 64, 64, QImage.Format.Format_RGBA8888)
+        lbl.setPixmap(QPixmap.fromImage(qimg))
+
+    def set_status(self, message: str) -> None:
+        self._status.setText(message)
+
+    def finish(self) -> None:
+        if self._ready:
+            return
+        self._ready = True
+        self._status.setText("Ready to dictate!")
+        self._status.setStyleSheet(f"font-size: 13px; color: {ACCENT}; font-weight: 600;")
+        QTimer.singleShot(1800, self._fade_out)
+
+    def _fade_out(self) -> None:
+        self._anim = QPropertyAnimation(self, b"windowOpacity")
+        self._anim.setDuration(400)
+        self._anim.setStartValue(1.0)
+        self._anim.setEndValue(0.0)
+        self._anim.setEasingCurve(QEasingCurve.Type.InQuad)
+        self._anim.finished.connect(self.close)
+        self._anim.start()
 
 
 # ── overview tab ──────────────────────────────────────────────────────────────
@@ -473,20 +553,29 @@ TAB_SETTINGS    = 4
 class _Bridge(QObject):
     show_signal = Signal(int)   # tab index
     transcript_signal = Signal(str)
+    splash_status_signal = Signal(str)
+    splash_finish_signal = Signal()
 
 
 _bridge: _Bridge | None = None
 
 
+_splash: SplashScreen | None = None
+
+
 def init(stats: SessionStats) -> None:
-    global _app, _window, _stats_ref, _bridge
+    global _app, _window, _stats_ref, _bridge, _splash
     _stats_ref = stats
     _app = QApplication.instance() or QApplication(sys.argv)
     _app.setQuitOnLastWindowClosed(False)
     _window = StatsWindow(stats)
+    _splash = SplashScreen()
+    _splash.show()
     _bridge = _Bridge()
     _bridge.show_signal.connect(_show)
     _bridge.transcript_signal.connect(_window.append_transcript)
+    _bridge.splash_status_signal.connect(_splash.set_status)
+    _bridge.splash_finish_signal.connect(_splash.finish)
 
 
 def _show(tab: int) -> None:
@@ -505,6 +594,16 @@ def show(tab: int = TAB_OVERVIEW) -> None:
 def notify_transcript(text: str) -> None:
     if _bridge:
         _bridge.transcript_signal.emit(text)
+
+
+def splash_status(message: str) -> None:
+    if _bridge:
+        _bridge.splash_status_signal.emit(message)
+
+
+def splash_ready() -> None:
+    if _bridge:
+        _bridge.splash_finish_signal.emit()
 
 
 def run_event_loop() -> None:
