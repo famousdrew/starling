@@ -56,9 +56,10 @@ def app_icon(size: int) -> Image.Image:
 
 
 def app_icon_ico_path() -> Path:
-    """Return path to the multi-size .ico file, generating it if needed."""
+    """Return path to the multi-size .ico file, generating/refreshing as needed."""
     path = _ASSETS / "icon.ico"
-    if not path.exists():
+    src  = _ASSETS / "icon.png"
+    if not path.exists() or src.stat().st_mtime > path.stat().st_mtime:
         _generate_ico(path)
     return path
 
