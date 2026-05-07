@@ -13,7 +13,7 @@
 
 ### Windows -- one click, no setup required
 
-**[Download StarlingSetup.bat](https://github.com/famousdrew/starling-voice-dictation/raw/main/StarlingSetup.bat)**
+**[Download Starling-Setup.zip](https://github.com/famousdrew/starling-voice-dictation/releases/latest/download/Starling-Setup.zip)**
 
 Double-click the file. The installer handles everything: Python, all dependencies, the AI model, and shortcuts on your Desktop and Start Menu. No terminal. No prior software required.
 
@@ -65,7 +65,7 @@ Starling runs entirely on your hardware using NVIDIA's [Parakeet-TDT v3](https:/
 
 ### Installation
 
-**[Download StarlingSetup.bat](https://github.com/famousdrew/starling-voice-dictation/raw/main/StarlingSetup.bat)** and double-click it. That is all.
+**[Download Starling-Setup.zip](https://github.com/famousdrew/starling-voice-dictation/releases/latest/download/Starling-Setup.zip)** and double-click it. That is all.
 
 The installer will:
 
@@ -135,7 +135,7 @@ cd starling-voice-dictation
 
 | What | Link |
 |---|---|
-| Starling installer | [StarlingSetup.bat](https://github.com/famousdrew/starling-voice-dictation/raw/main/StarlingSetup.bat) |
+| Starling installer | [Starling-Setup.zip](https://github.com/famousdrew/starling-voice-dictation/releases/latest/download/Starling-Setup.zip) |
 | Python 3.12 (if needed) | [python.org/downloads/release/python-3129](https://www.python.org/downloads/release/python-3129/) |
 | NVIDIA driver 520+ | [nvidia.com/drivers](https://www.nvidia.com/en-us/drivers/) |
 | CUDA 12.8 Toolkit (optional) | [developer.nvidia.com/cuda-12-8-0-download-archive](https://developer.nvidia.com/cuda-12-8-0-download-archive) |

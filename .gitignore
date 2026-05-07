@@ -18,3 +18,7 @@ build/
 # Generated per-machine
 launch.vbs
 starling/assets/icon.ico
+
+# Release artifacts
+Starling-Setup.zip
+install-readme.txt
