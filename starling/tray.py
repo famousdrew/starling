@@ -60,9 +60,13 @@ class TrayIcon:
     def __init__(
         self,
         on_stats: Callable[[], None],
+        on_dictionary: Callable[[], None],
+        on_settings: Callable[[], None],
         on_quit: Callable[[], None],
     ) -> None:
         self._on_stats = on_stats
+        self._on_dictionary = on_dictionary
+        self._on_settings = on_settings
         self._on_quit = on_quit
         self._state = TrayState.IDLE
         self._level: float = 0.0
@@ -72,6 +76,8 @@ class TrayIcon:
     def start(self) -> None:
         menu = pystray.Menu(
             pystray.MenuItem("Stats", lambda: self._on_stats()),
+            pystray.MenuItem("Dictionary", lambda: self._on_dictionary()),
+            pystray.MenuItem("Settings", lambda: self._on_settings()),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("Quit", lambda: self._on_quit()),
         )

@@ -19,6 +19,8 @@ def main() -> None:
         transcriber = ParakeetTranscriber()
         tray = TrayIcon(
             on_stats=stats_ui.show,
+            on_dictionary=lambda: stats_ui.show(stats_ui.TAB_VOCABULARY),
+            on_settings=lambda: stats_ui.show(stats_ui.TAB_SETTINGS),
             on_quit=_quit,
         )
 

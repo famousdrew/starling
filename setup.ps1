@@ -92,11 +92,46 @@ if (Test-Path $corrDest) {
     Write-Ok "corrections.json installed to $corrDest"
 }
 
-# ── 8. Done ───────────────────────────────────────────────────────────────────
+# ── 8. Create shortcuts ───────────────────────────────────────────────────────
+Write-Step "Creating shortcuts..."
+$repoPath = (Resolve-Path ".").Path
+
+# A hidden VBScript launcher avoids a console window flashing on startup.
+$launcherPath = "$repoPath\launch.vbs"
+$launcherContent = @"
+Set WshShell = CreateObject("WScript.Shell")
+WshShell.Run "powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File """ & "$repoPath\run.ps1" & """", 0, False
+"@
+$launcherContent | Out-File -FilePath $launcherPath -Encoding ascii
+
+$shell = New-Object -ComObject WScript.Shell
+
+# Desktop shortcut
+$desktop = [System.Environment]::GetFolderPath("Desktop")
+$desktopLink = $shell.CreateShortcut("$desktop\Starling.lnk")
+$desktopLink.TargetPath = "wscript.exe"
+$desktopLink.Arguments = "`"$launcherPath`""
+$desktopLink.WorkingDirectory = $repoPath
+$desktopLink.Description = "Starling voice dictation"
+$desktopLink.Save()
+Write-Ok "Desktop shortcut created"
+
+# Start menu shortcut
+$startMenu = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs"
+$startLink = $shell.CreateShortcut("$startMenu\Starling.lnk")
+$startLink.TargetPath = "wscript.exe"
+$startLink.Arguments = "`"$launcherPath`""
+$startLink.WorkingDirectory = $repoPath
+$startLink.Description = "Starling voice dictation"
+$startLink.Save()
+Write-Ok "Start menu shortcut created"
+
+# ── 9. Done ───────────────────────────────────────────────────────────────────
 Write-Host ""
 Write-Host "  Setup complete." -ForegroundColor Green
 Write-Host "  The Parakeet model (~2.5 GB) will download on first run." -ForegroundColor Cyan
+Write-Host "  Shortcuts added to your desktop and Start menu." -ForegroundColor Cyan
 Write-Host ""
-Write-Host "  Start Starling with:" -ForegroundColor White
+Write-Host "  Launch Starling from your desktop, Start menu, or:" -ForegroundColor White
 Write-Host "    .\run.ps1" -ForegroundColor Yellow
 Write-Host ""

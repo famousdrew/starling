@@ -463,8 +463,15 @@ _window: StatsWindow | None = None
 _stats_ref: SessionStats | None = None
 
 
+TAB_OVERVIEW    = 0
+TAB_SESSIONS    = 1
+TAB_PLAYGROUND  = 2
+TAB_VOCABULARY  = 3
+TAB_SETTINGS    = 4
+
+
 class _Bridge(QObject):
-    show_signal = Signal()
+    show_signal = Signal(int)   # tab index
     transcript_signal = Signal(str)
 
 
@@ -482,16 +489,17 @@ def init(stats: SessionStats) -> None:
     _bridge.transcript_signal.connect(_window.append_transcript)
 
 
-def _show() -> None:
+def _show(tab: int) -> None:
     if _window:
+        _window._tabs.setCurrentIndex(tab)
         _window.show()
         _window.raise_()
         _window.activateWindow()
 
 
-def show() -> None:
+def show(tab: int = TAB_OVERVIEW) -> None:
     if _bridge:
-        _bridge.show_signal.emit()
+        _bridge.show_signal.emit(tab)
 
 
 def notify_transcript(text: str) -> None:
