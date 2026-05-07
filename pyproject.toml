@@ -16,6 +16,7 @@ dependencies = [
     "PySide6",
     "pyperclip",
     "pywin32",
+    "faster-whisper",
 ]
 
 [project.scripts]

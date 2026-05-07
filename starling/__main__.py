@@ -8,15 +8,39 @@ from .hotkey import HotkeyEvent, HotkeyMonitor
 from .inject import paste
 from .stats import SessionStats
 from .streaming import StreamingTranscriber
-from .transcriber import ParakeetTranscriber
 from .tray import TrayIcon, TrayState
 from . import stats_ui, corrections
+
+
+def _make_transcriber():
+    from . import config as cfg
+    backend = cfg.get("backend", "auto")
+
+    if backend == "whisper":
+        from .whisper_transcriber import WhisperTranscriber
+        return WhisperTranscriber(cfg.get("whisper_model", "small.en"))
+
+    if backend == "parakeet":
+        from .transcriber import ParakeetTranscriber
+        return ParakeetTranscriber()
+
+    # auto: use Parakeet on GPU, Whisper on CPU
+    try:
+        import torch
+        if torch.cuda.is_available():
+            from .transcriber import ParakeetTranscriber
+            return ParakeetTranscriber()
+    except Exception:
+        pass
+    from .whisper_transcriber import WhisperTranscriber
+    from .constants import WHISPER_MODEL_SIZE
+    return WhisperTranscriber(cfg.get("whisper_model", WHISPER_MODEL_SIZE))
 
 
 def main() -> None:
     try:
         stats = SessionStats()
-        transcriber = ParakeetTranscriber()
+        transcriber = _make_transcriber()
         tray = TrayIcon(
             on_stats=stats_ui.show,
             on_dictionary=lambda: stats_ui.show(stats_ui.TAB_VOCABULARY),

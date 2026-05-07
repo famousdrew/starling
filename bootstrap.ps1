@@ -133,16 +133,65 @@ $btn.Font      = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.
 $btn.Cursor    = [System.Windows.Forms.Cursors]::Hand
 $form.Controls.Add($btn)
 
+# ── Model choice panel (shown when no GPU is detected) ────────────────────────
+$choicePanel           = New-Object System.Windows.Forms.Panel
+$choicePanel.Location  = $log.Location
+$choicePanel.Size      = $log.Size
+$choicePanel.BackColor = $C_BG
+$choicePanel.Visible   = $false
+$form.Controls.Add($choicePanel)
+
+$cpTitle           = New-Object System.Windows.Forms.Label
+$cpTitle.Text      = "No NVIDIA GPU detected."
+$cpTitle.Font      = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
+$cpTitle.ForeColor = $C_TEXT
+$cpTitle.Location  = New-Object System.Drawing.Point(0, 0)
+$cpTitle.Size      = New-Object System.Drawing.Size(460, 24)
+$choicePanel.Controls.Add($cpTitle)
+
+$cpSub           = New-Object System.Windows.Forms.Label
+$cpSub.Text      = "Choose your transcription model. You can change this later in Settings."
+$cpSub.ForeColor = $C_DIM
+$cpSub.Location  = New-Object System.Drawing.Point(0, 28)
+$cpSub.Size      = New-Object System.Drawing.Size(460, 18)
+$choicePanel.Controls.Add($cpSub)
+
+$cpBtn1           = New-Object System.Windows.Forms.Button
+$cpBtn1.Text      = "Fast  --  Whisper small  (~500 MB)`r`nNear real-time on modern CPUs. Good accuracy."
+$cpBtn1.Location  = New-Object System.Drawing.Point(0, 56)
+$cpBtn1.Size      = New-Object System.Drawing.Size(460, 60)
+$cpBtn1.BackColor = $C_ADIM
+$cpBtn1.ForeColor = $C_ACCENT
+$cpBtn1.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$cpBtn1.FlatAppearance.BorderSize = 0
+$cpBtn1.Font      = New-Object System.Drawing.Font("Segoe UI", 10)
+$cpBtn1.Cursor    = [System.Windows.Forms.Cursors]::Hand
+$choicePanel.Controls.Add($cpBtn1)
+
+$cpBtn2           = New-Object System.Windows.Forms.Button
+$cpBtn2.Text      = "Accurate  --  Whisper medium  (~1.5 GB)`r`nBetter accuracy, roughly 2x slower."
+$cpBtn2.Location  = New-Object System.Drawing.Point(0, 128)
+$cpBtn2.Size      = New-Object System.Drawing.Size(460, 60)
+$cpBtn2.BackColor = [System.Drawing.Color]::FromArgb(22, 52, 101)
+$cpBtn2.ForeColor = [System.Drawing.Color]::FromArgb(96, 165, 250)
+$cpBtn2.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$cpBtn2.FlatAppearance.BorderSize = 0
+$cpBtn2.Font      = New-Object System.Drawing.Font("Segoe UI", 10)
+$cpBtn2.Cursor    = [System.Windows.Forms.Cursors]::Hand
+$choicePanel.Controls.Add($cpBtn2)
+
 # ── Shared state ──────────────────────────────────────────────────────────────
 $sync = [hashtable]::Synchronized(@{
-    Pct          = 0
-    Status       = ""
-    LogLine      = ""
-    Marquee      = $false
-    Done         = $false
-    Success      = $false
-    Error        = ""
-    CleanInstall = $false
+    Pct             = 0
+    Status          = ""
+    LogLine         = ""
+    Marquee         = $false
+    Done            = $false
+    Success         = $false
+    Error           = ""
+    CleanInstall    = $false
+    NeedModelChoice = $false
+    ModelChoice     = ""
 })
 
 # ── Install work ──────────────────────────────────────────────────────────────
@@ -308,7 +357,14 @@ $installWork = {
             $gpu = & $python -c "import torch; print(torch.cuda.get_device_name(0))" 2>$null
             Log "PyTorch ready.  GPU: $gpu"
         } else {
-            Log "PyTorch ready.  (No CUDA GPU - transcription will be slow.)"
+            Log "No NVIDIA GPU detected.  Waiting for model selection..."
+            $s.NeedModelChoice = $true
+            while ($s.ModelChoice -eq "") { Start-Sleep -Milliseconds 200 }
+            $corrDir = Join-Path $env:APPDATA "Starling"
+            if (-not (Test-Path $corrDir)) { New-Item -ItemType Directory -Path $corrDir | Out-Null }
+            $cfg = "{`"backend`": `"whisper`", `"whisper_model`": `"$($s.ModelChoice)`"}"
+            $cfg | Out-File (Join-Path $corrDir "config.json") -Encoding utf8
+            Log "Model set to Whisper $($s.ModelChoice)."
         }
         Step "PyTorch ready." 62
 
@@ -398,6 +454,12 @@ $timer.Add_Tick({
     }
     if ($sync.Status -ne "") { $lblStatus.Text = $sync.Status }
 
+    if ($sync.NeedModelChoice -and -not $choicePanel.Visible) {
+        $log.Visible         = $false
+        $choicePanel.Visible = $true
+        $lblStatus.Text      = "Choose your transcription model to continue:"
+    }
+
     if ($sync.Done) {
         $timer.Stop()
         $chkClean.Visible = $false
@@ -422,6 +484,21 @@ $timer.Add_Tick({
             $btn.Enabled = $true
         }
     }
+})
+
+# ── Model choice buttons ──────────────────────────────────────────────────────
+$cpBtn1.Add_Click({
+    $choicePanel.Visible  = $false
+    $log.Visible          = $true
+    $sync.ModelChoice     = "small.en"
+    $sync.NeedModelChoice = $false
+})
+
+$cpBtn2.Add_Click({
+    $choicePanel.Visible  = $false
+    $log.Visible          = $true
+    $sync.ModelChoice     = "medium.en"
+    $sync.NeedModelChoice = $false
 })
 
 # ── Button ────────────────────────────────────────────────────────────────────

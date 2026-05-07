@@ -10,11 +10,8 @@ from .constants import (
     SILENCE_THRESHOLD,
     SILENCE_WINDOW_MS,
 )
-from .transcriber import ParakeetTranscriber
-
-
 class StreamingTranscriber:
-    def __init__(self, transcriber: ParakeetTranscriber) -> None:
+    def __init__(self, transcriber) -> None:
         self._transcriber = transcriber
         self._min_samples = MIN_CHUNK_SECONDS * SAMPLE_RATE
         self._max_samples = MAX_CHUNK_SECONDS * SAMPLE_RATE

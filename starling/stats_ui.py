@@ -8,6 +8,7 @@ from PySide6.QtCore import Qt, QTimer, Signal, QObject, QPropertyAnimation, QEas
 from PySide6.QtGui import QColor, QFont, QPainter, QPen, QBrush, QPixmap, QImage
 from PySide6.QtWidgets import (
     QApplication,
+    QComboBox,
     QFrame,
     QHBoxLayout,
     QHeaderView,
@@ -67,6 +68,15 @@ QPushButton:disabled {{ background: {SURFACE}; color: {TEXT_DIM}; }}
 QTextEdit {{
     background: {SURFACE}; border: 1px solid {BORDER}; border-radius: 6px;
     color: {TEXT}; padding: 8px; font-size: 13px;
+}}
+QComboBox {{
+    background: {SURFACE}; border: 1px solid {BORDER}; border-radius: 6px;
+    color: {TEXT}; padding: 6px 12px; font-size: 13px;
+}}
+QComboBox::drop-down {{ border: none; width: 20px; }}
+QComboBox QAbstractItemView {{
+    background: {SURFACE}; color: {TEXT}; border: 1px solid {BORDER};
+    selection-background-color: {ACCENT_DIM}; selection-color: {ACCENT};
 }}
 QTableWidget {{
     background: {SURFACE}; border: 1px solid {BORDER}; border-radius: 6px;
@@ -458,6 +468,14 @@ class VocabularyTab(QWidget):
 
 # ── settings tab ─────────────────────────────────────────────────────────────
 
+_ENGINE_OPTIONS = [
+    ("Auto  (Parakeet on GPU, Whisper on CPU)",  "auto",     None),
+    ("Parakeet TDT v3  (GPU required)",          "parakeet", None),
+    ("Whisper small  (CPU, ~500 MB)",             "whisper",  "small.en"),
+    ("Whisper medium  (CPU, ~1.5 GB, more accurate)", "whisper", "medium.en"),
+]
+
+
 class SettingsTab(QWidget):
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
@@ -465,17 +483,44 @@ class SettingsTab(QWidget):
         root.setContentsMargins(12, 12, 12, 12)
         root.setSpacing(10)
 
+        # ── Transcription engine ──────────────────────────────────────────────
+        from . import config as cfg
+        eng_frame, eng_lay = _card()
+        eng_lay.addWidget(_label("Transcription Engine"))
+        eng_lay.addWidget(_label(
+            "Changes take effect after restarting Starling.", "session-meta"
+        ))
+        self._engine_combo = QComboBox()
+        for label, _, _ in _ENGINE_OPTIONS:
+            self._engine_combo.addItem(label)
+
+        # Select current
+        current_backend = cfg.get("backend", "auto")
+        current_model   = cfg.get("whisper_model", "small.en")
+        for i, (_, backend, model) in enumerate(_ENGINE_OPTIONS):
+            if backend == current_backend and (model is None or model == current_model):
+                self._engine_combo.setCurrentIndex(i)
+                break
+
+        eng_lay.addWidget(self._engine_combo)
+        save_btn = QPushButton("Save")
+        save_btn.clicked.connect(self._save_engine)
+        eng_lay.addWidget(save_btn)
+        root.addWidget(eng_frame)
+
+        # ── Launch at login ───────────────────────────────────────────────────
         from . import login_item
-        frame, lay = _card()
-        lay.addWidget(_label("Launch at Login"))
+        login_frame, login_lay = _card()
+        login_lay.addWidget(_label("Launch at Login"))
         self._login_btn = QPushButton(
             "Disable launch at login" if login_item.is_enabled()
             else "Enable launch at login"
         )
         self._login_btn.clicked.connect(self._toggle_login)
-        lay.addWidget(self._login_btn)
-        root.addWidget(frame)
+        login_lay.addWidget(self._login_btn)
+        root.addWidget(login_frame)
 
+        # ── Quit ──────────────────────────────────────────────────────────────
         quit_frame, quit_lay = _card()
         quit_lay.addWidget(_label("Quit Starling"))
         quit_btn = QPushButton("Quit")
@@ -484,6 +529,13 @@ class SettingsTab(QWidget):
         quit_lay.addWidget(quit_btn)
         root.addWidget(quit_frame)
         root.addStretch()
+
+    def _save_engine(self) -> None:
+        from . import config as cfg
+        _, backend, model = _ENGINE_OPTIONS[self._engine_combo.currentIndex()]
+        cfg.set("backend", backend)
+        if model:
+            cfg.set("whisper_model", model)
 
     def _toggle_login(self) -> None:
         from . import login_item
