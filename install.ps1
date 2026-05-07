@@ -17,16 +17,19 @@ $C_DIM    = [System.Drawing.Color]::FromArgb(136, 136, 136)
 $C_RED    = [System.Drawing.Color]::FromArgb(248, 113, 113)
 $C_LOG    = [System.Drawing.Color]::FromArgb(12,  12,  14)
 
+# ── Detect existing install ───────────────────────────────────────────────────
+$existingInstall = Test-Path (Join-Path $REPO ".venv\Scripts\python.exe")
+
 # ── Form ──────────────────────────────────────────────────────────────────────
 $form = New-Object System.Windows.Forms.Form
-$form.Text          = "Starling Setup"
-$form.ClientSize    = New-Object System.Drawing.Size(500, 440)
-$form.StartPosition = [System.Windows.Forms.FormStartPosition]::CenterScreen
+$form.Text            = "Starling Setup"
+$form.ClientSize      = New-Object System.Drawing.Size(500, 462)
+$form.StartPosition   = [System.Windows.Forms.FormStartPosition]::CenterScreen
 $form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedSingle
-$form.MaximizeBox   = $false
-$form.BackColor     = $C_BG
-$form.ForeColor     = $C_TEXT
-$form.Font          = New-Object System.Drawing.Font("Segoe UI", 10)
+$form.MaximizeBox     = $false
+$form.BackColor       = $C_BG
+$form.ForeColor       = $C_TEXT
+$form.Font            = New-Object System.Drawing.Font("Segoe UI", 10)
 
 $iconPng = Join-Path $REPO "starling\assets\icon.png"
 if (Test-Path $iconPng) {
@@ -42,39 +45,44 @@ $header.Dock      = [System.Windows.Forms.DockStyle]::Top
 $header.Height    = 78
 $header.BackColor = $C_CARD
 
-$pic          = New-Object System.Windows.Forms.PictureBox
-$pic.Size     = New-Object System.Drawing.Size(52, 52)
-$pic.Location = New-Object System.Drawing.Point(20, 13)
-$pic.SizeMode = [System.Windows.Forms.PictureBoxSizeMode]::Zoom
+$pic           = New-Object System.Windows.Forms.PictureBox
+$pic.Size      = New-Object System.Drawing.Size(52, 52)
+$pic.Location  = New-Object System.Drawing.Point(20, 13)
+$pic.SizeMode  = [System.Windows.Forms.PictureBoxSizeMode]::Zoom
 $pic.BackColor = $C_CARD
 if (Test-Path $iconPng) {
     try { $pic.Image = [System.Drawing.Image]::FromFile($iconPng) } catch {}
 }
 $header.Controls.Add($pic)
 
-$lblTitle          = New-Object System.Windows.Forms.Label
-$lblTitle.Text     = "Starling"
-$lblTitle.Font     = New-Object System.Drawing.Font("Segoe UI", 18, [System.Drawing.FontStyle]::Bold)
+$lblTitle           = New-Object System.Windows.Forms.Label
+$lblTitle.Text      = "Starling"
+$lblTitle.Font      = New-Object System.Drawing.Font("Segoe UI", 18, [System.Drawing.FontStyle]::Bold)
 $lblTitle.ForeColor = $C_TEXT
-$lblTitle.Location = New-Object System.Drawing.Point(82, 10)
-$lblTitle.AutoSize = $true
+$lblTitle.Location  = New-Object System.Drawing.Point(82, 10)
+$lblTitle.AutoSize  = $true
 $header.Controls.Add($lblTitle)
 
-$lblSub          = New-Object System.Windows.Forms.Label
-$lblSub.Text     = "Offline voice dictation for Windows"
+$lblSub           = New-Object System.Windows.Forms.Label
+$lblSub.Text      = "Offline voice dictation for Windows"
 $lblSub.ForeColor = $C_DIM
-$lblSub.Location = New-Object System.Drawing.Point(84, 46)
-$lblSub.AutoSize = $true
+$lblSub.Location  = New-Object System.Drawing.Point(84, 46)
+$lblSub.AutoSize  = $true
 $header.Controls.Add($lblSub)
 
 $form.Controls.Add($header)
 
 # ── Status label ──────────────────────────────────────────────────────────────
-$lblStatus          = New-Object System.Windows.Forms.Label
-$lblStatus.Text     = "Click Install to begin."
-$lblStatus.Location = New-Object System.Drawing.Point(20, 90)
-$lblStatus.Size     = New-Object System.Drawing.Size(460, 20)
+$lblStatus           = New-Object System.Windows.Forms.Label
+$lblStatus.Location  = New-Object System.Drawing.Point(20, 90)
+$lblStatus.Size      = New-Object System.Drawing.Size(460, 20)
 $lblStatus.ForeColor = $C_DIM
+if ($existingInstall) {
+    $lblStatus.Text      = "Existing installation found.  Click Update to apply any changes."
+    $lblStatus.ForeColor = $C_ACCENT
+} else {
+    $lblStatus.Text = "Click Install to begin."
+}
 $form.Controls.Add($lblStatus)
 
 # ── Progress bar ──────────────────────────────────────────────────────────────
@@ -86,40 +94,51 @@ $progress.Maximum  = 100
 $progress.Style    = [System.Windows.Forms.ProgressBarStyle]::Continuous
 $form.Controls.Add($progress)
 
+# ── Clean reinstall checkbox (only shown for existing installs) ───────────────
+$chkClean           = New-Object System.Windows.Forms.CheckBox
+$chkClean.Text      = "Clean reinstall  (removes existing installation and re-downloads everything)"
+$chkClean.ForeColor = $C_DIM
+$chkClean.BackColor = $C_BG
+$chkClean.Location  = New-Object System.Drawing.Point(20, 140)
+$chkClean.Size      = New-Object System.Drawing.Size(460, 22)
+$chkClean.Visible   = $existingInstall
+$form.Controls.Add($chkClean)
+
 # ── Log box ───────────────────────────────────────────────────────────────────
-$log           = New-Object System.Windows.Forms.RichTextBox
-$log.Location  = New-Object System.Drawing.Point(20, 142)
-$log.Size      = New-Object System.Drawing.Size(460, 224)
-$log.BackColor = $C_LOG
-$log.ForeColor = $C_DIM
-$log.Font      = New-Object System.Drawing.Font("Consolas", 8.5)
-$log.ReadOnly  = $true
+$log             = New-Object System.Windows.Forms.RichTextBox
+$log.Location    = New-Object System.Drawing.Point(20, 170)
+$log.Size        = New-Object System.Drawing.Size(460, 216)
+$log.BackColor   = $C_LOG
+$log.ForeColor   = $C_DIM
+$log.Font        = New-Object System.Drawing.Font("Consolas", 8.5)
+$log.ReadOnly    = $true
 $log.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
 $log.ScrollBars  = [System.Windows.Forms.RichTextBoxScrollBars]::Vertical
 $form.Controls.Add($log)
 
 # ── Button ────────────────────────────────────────────────────────────────────
-$btn          = New-Object System.Windows.Forms.Button
-$btn.Text     = "Install"
-$btn.Location = New-Object System.Drawing.Point(20, 380)
-$btn.Size     = New-Object System.Drawing.Size(460, 42)
+$btn           = New-Object System.Windows.Forms.Button
+$btn.Text      = if ($existingInstall) { "Update" } else { "Install" }
+$btn.Location  = New-Object System.Drawing.Point(20, 402)
+$btn.Size      = New-Object System.Drawing.Size(460, 42)
 $btn.BackColor = $C_ADIM
 $btn.ForeColor = $C_ACCENT
 $btn.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $btn.FlatAppearance.BorderSize = 0
-$btn.Font     = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
-$btn.Cursor   = [System.Windows.Forms.Cursors]::Hand
+$btn.Font      = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
+$btn.Cursor    = [System.Windows.Forms.Cursors]::Hand
 $form.Controls.Add($btn)
 
 # ── Shared state (cross-thread via synchronized hashtable) ────────────────────
 $sync = [hashtable]::Synchronized(@{
-    Pct     = 0
-    Status  = ""
-    LogLine = ""
-    Marquee = $false
-    Done    = $false
-    Success = $false
-    Error   = ""
+    Pct          = 0
+    Status       = ""
+    LogLine      = ""
+    Marquee      = $false
+    Done         = $false
+    Success      = $false
+    Error        = ""
+    CleanInstall = $false
 })
 
 # ── Install work (runs in a background runspace) ──────────────────────────────
@@ -151,10 +170,17 @@ $installWork = {
         Log "Python 3.12 found  ($pyCli $($pyExtra -join ' '))"
 
         # 2 - Virtual environment
-        Step "Creating virtual environment..." 6
         $venv   = Join-Path $repo ".venv"
         $pip    = Join-Path $venv "Scripts\pip.exe"
         $python = Join-Path $venv "Scripts\python.exe"
+
+        if ($s.CleanInstall -and (Test-Path $venv)) {
+            Step "Removing existing installation..." 4
+            Remove-Item $venv -Recurse -Force
+            Log "Existing installation removed."
+        }
+
+        Step "Creating virtual environment..." 6
         if (-not (Test-Path $venv)) {
             & $pyCli @pyExtra -m venv $venv 2>&1 | ForEach-Object { Log $_ }
             if ($LASTEXITCODE -ne 0) { $s.Error = "Failed to create virtual environment."; $s.Done = $true; return }
@@ -170,15 +196,15 @@ $installWork = {
         # 4 - numpy
         Step "Installing numpy..." 14
         & $pip install --quiet "numpy>=2.0" 2>&1 | Out-Null
-        Log "numpy installed."
+        Log "numpy ready."
 
         # 5 - PyTorch (large download - use marquee)
         Step "Installing PyTorch with CUDA (downloading ~2.5 GB, please wait)..." 18
         $s.Marquee = $true
-        $torchOut = & $pip install --quiet torch torchaudio --index-url https://download.pytorch.org/whl/cu128 2>&1
+        & $pip install --quiet torch torchaudio --index-url https://download.pytorch.org/whl/cu128 2>&1 | Out-Null
         if ($LASTEXITCODE -ne 0) {
             Log "cu128 index unavailable, retrying with cu126..."
-            $torchOut = & $pip install --quiet torch torchaudio --index-url https://download.pytorch.org/whl/cu126 2>&1
+            & $pip install --quiet torch torchaudio --index-url https://download.pytorch.org/whl/cu126 2>&1 | Out-Null
             if ($LASTEXITCODE -ne 0) {
                 $s.Marquee = $false
                 $s.Error = "PyTorch install failed.  Check your internet connection."
@@ -190,9 +216,9 @@ $installWork = {
         $cudaOk = & $python -c "import torch; print(torch.cuda.is_available())" 2>$null
         if ($cudaOk -eq "True") {
             $gpu = & $python -c "import torch; print(torch.cuda.get_device_name(0))" 2>$null
-            Log "PyTorch installed.  GPU: $gpu"
+            Log "PyTorch ready.  GPU: $gpu"
         } else {
-            Log "PyTorch installed.  (No CUDA GPU detected - transcription will be slow.)"
+            Log "PyTorch ready.  (No CUDA GPU detected - transcription will be slow.)"
         }
         Step "PyTorch ready." 56
 
@@ -206,8 +232,8 @@ $installWork = {
             $s.Done = $true; return
         }
         $s.Marquee = $false
-        Log "Starling and NeMo installed."
-        Step "Dependencies installed." 88
+        Log "Starling and NeMo ready."
+        Step "Dependencies ready." 88
 
         # 7 - Corrections dictionary
         Step "Installing corrections dictionary..." 90
@@ -217,7 +243,7 @@ $installWork = {
         $dest = Join-Path $corrDir "corrections.json"
         if (-not (Test-Path $dest)) {
             Copy-Item $src $dest
-            Log "corrections.json installed to $dest"
+            Log "corrections.json installed."
         } else {
             Log "corrections.json already present, skipping."
         }
@@ -253,7 +279,7 @@ WshShell.Run "powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File "
         $lnk2.Description = "Starling voice dictation"; $lnk2.Save()
 
         Log "Shortcuts created on Desktop and Start Menu."
-        Step "Setup complete!" 100
+        Step "Done!" 100
         $s.Success = $true
 
     } catch {
@@ -268,7 +294,6 @@ $timer          = New-Object System.Windows.Forms.Timer
 $timer.Interval = 120
 
 $timer.Add_Tick({
-    # Flush the latest log line
     if ($sync.LogLine -ne "") {
         $log.SelectionStart  = $log.TextLength
         $log.SelectionLength = 0
@@ -277,7 +302,6 @@ $timer.Add_Tick({
         $sync.LogLine = ""
     }
 
-    # Progress bar style (Marquee during big downloads, Continuous otherwise)
     if ($sync.Marquee -and $progress.Style -ne [System.Windows.Forms.ProgressBarStyle]::Marquee) {
         $progress.Style = [System.Windows.Forms.ProgressBarStyle]::Marquee
         $progress.MarqueeAnimationSpeed = 25
@@ -285,32 +309,31 @@ $timer.Add_Tick({
         $progress.Style = [System.Windows.Forms.ProgressBarStyle]::Continuous
     }
 
-    # Progress value
     if (-not $sync.Marquee -and $sync.Pct -gt $progress.Value) {
         $progress.Value = [Math]::Min($sync.Pct, 100)
     }
 
-    # Status text
     if ($sync.Status -ne "") { $lblStatus.Text = $sync.Status }
 
-    # Completion
     if ($sync.Done) {
         $timer.Stop()
+        $chkClean.Visible = $false
         if ($sync.Success) {
-            $progress.Style = [System.Windows.Forms.ProgressBarStyle]::Continuous
-            $progress.Value = 100
+            $progress.Style      = [System.Windows.Forms.ProgressBarStyle]::Continuous
+            $progress.Value      = 100
             $lblStatus.ForeColor = $C_ACCENT
             $lblStatus.Text      = "Setup complete!  Starling is ready to use."
-            $btn.Text      = "Launch Starling"
-            $btn.BackColor = $C_ADIM
-            $btn.ForeColor = $C_ACCENT
-            $btn.Enabled   = $true
+            $btn.Text            = "Launch Starling"
+            $btn.BackColor       = $C_ADIM
+            $btn.ForeColor       = $C_ACCENT
+            $btn.Enabled         = $true
         } else {
-            $progress.Style = [System.Windows.Forms.ProgressBarStyle]::Continuous
+            $progress.Style      = [System.Windows.Forms.ProgressBarStyle]::Continuous
             $lblStatus.ForeColor = $C_RED
             $lblStatus.Text      = "Error: $($sync.Error)"
-            $btn.Text    = "Retry"
-            $btn.Enabled = $true
+            $chkClean.Visible    = $true
+            $btn.Text            = if ($existingInstall) { "Retry" } else { "Retry" }
+            $btn.Enabled         = $true
         }
     }
 })
@@ -324,21 +347,23 @@ $btn.Add_Click({
         return
     }
 
-    # Start or retry installation
-    $btn.Enabled  = $false
-    $btn.Text     = "Installing..."
+    $btn.Enabled         = $false
+    $btn.Text            = "Working..."
     $lblStatus.ForeColor = $C_TEXT
-    $lblStatus.Text = "Starting up..."
+    $lblStatus.Text      = "Starting up..."
+    $chkClean.Visible    = $false
     $log.Clear()
-    $progress.Value  = 0
-    $progress.Style  = [System.Windows.Forms.ProgressBarStyle]::Continuous
-    $sync.Pct     = 0
-    $sync.Status  = ""
-    $sync.LogLine = ""
-    $sync.Marquee = $false
-    $sync.Done    = $false
-    $sync.Success = $false
-    $sync.Error   = ""
+    $progress.Value = 0
+    $progress.Style = [System.Windows.Forms.ProgressBarStyle]::Continuous
+
+    $sync.Pct          = 0
+    $sync.Status       = ""
+    $sync.LogLine      = ""
+    $sync.Marquee      = $false
+    $sync.Done         = $false
+    $sync.Success      = $false
+    $sync.Error        = ""
+    $sync.CleanInstall = $chkClean.Checked
 
     $rs = [runspacefactory]::CreateRunspace()
     $rs.Open()
