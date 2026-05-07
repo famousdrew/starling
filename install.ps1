@@ -154,14 +154,35 @@ $installWork = {
 
     try {
         # 1 - Locate Python 3.12
+        # Use System.Diagnostics.Process with a timeout so a missing/aliased
+        # "python" command (Windows Store redirect) can't hang the installer.
         Step "Checking for Python 3.12..." 2
-        $pyCli = $null; $pyExtra = @()
-        foreach ($cand in @("py", "python3.12", "python")) {
+
+        function TryPython([string]$exe, [string[]]$extraArgs) {
             try {
-                $xtra = if ($cand -eq "py") { @("-3.12") } else { @() }
-                $ver = & $cand @xtra -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>$null
-                if ($ver -eq "3.12") { $pyCli = $cand; $pyExtra = $xtra; break }
-            } catch {}
+                $psi = New-Object System.Diagnostics.ProcessStartInfo
+                $psi.FileName    = $exe
+                $allArgs         = $extraArgs + @("-c", "import sys; print(str(sys.version_info.major)+'.'+str(sys.version_info.minor))")
+                $psi.Arguments   = ($allArgs | ForEach-Object { "`"$_`"" }) -join ' '
+                $psi.UseShellExecute        = $false
+                $psi.RedirectStandardOutput = $true
+                $psi.RedirectStandardError  = $true
+                $psi.CreateNoWindow         = $true
+                $proc = [System.Diagnostics.Process]::Start($psi)
+                if ($null -eq $proc) { return $null }
+                if ($proc.WaitForExit(4000)) {
+                    return $proc.StandardOutput.ReadToEnd().Trim()
+                }
+                try { $proc.Kill() } catch {}
+                return $null
+            } catch { return $null }
+        }
+
+        $pyCli = $null; $pyExtra = @()
+        foreach ($cand in @("py", "python3.12", "python3", "python")) {
+            $xtra = if ($cand -eq "py") { @("-3.12") } else { @() }
+            $ver  = TryPython $cand $xtra
+            if ($ver -eq "3.12") { $pyCli = $cand; $pyExtra = $xtra; break }
         }
         if (-not $pyCli) {
             $s.Error = "Python 3.12 not found.  Run:  winget install Python.Python.3.12"
