@@ -6,7 +6,7 @@ Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
 $INSTALL_DIR  = Join-Path $env:LOCALAPPDATA "Starling"
-$REPO_ZIP_URL = "https://github.com/famousdrew/starling/archive/refs/heads/main.zip"
+$REPO_ZIP_URL = "https://github.com/famousdrew/starling-voice-dictation/archive/refs/heads/main.zip"
 $PYTHON_URL   = "https://www.python.org/ftp/python/3.12.9/python-3.12.9-amd64.exe"
 $PYTHON_VER   = "3.12"
 
