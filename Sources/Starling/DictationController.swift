@@ -14,6 +14,12 @@ final class DictationController {
     var onLevel: ((Float) -> Void)?
     /// Fired on the main thread after each successful transcription.
     var onSession: ((Double, String) -> Void)?
+    /// Status updates during model load — wired to the splash screen.
+    var onStatus: ((String) -> Void)?
+    /// Fired once the model is loaded and pre-warmed.
+    var onReady: (() -> Void)?
+    /// Vocabulary that rewrites transcripts before paste. Accessed only on main.
+    var corrections: Corrections?
 
     private let hotkey = HotkeyMonitor()
     private let recorder = AudioRecorder()
@@ -47,11 +53,18 @@ final class DictationController {
     }
 
     private func loadModel() async {
+        // First-run download is ~600MB. Heuristically tell the user which they're in for.
+        let modelPath = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Documents/huggingface/models/argmaxinc/whisperkit-coreml/large-v3_turbo")
+        let isFirstRun = !FileManager.default.fileExists(atPath: modelPath.path)
+        await MainActor.run {
+            self.onStatus?(isFirstRun ? "Downloading model (first run, ~600MB)…" : "Loading model…")
+        }
         do {
             // `large-v3_turbo` is the speed/quality sweet spot on Apple Silicon.
-            // First launch downloads ~600MB to ~/Documents/huggingface/.
             whisper = try await WhisperKit(model: "large-v3_turbo")
             fputs("Whisper model loaded — pre-warming...\n", stderr)
+            await MainActor.run { self.onStatus?("Warming up…") }
 
             // Run a 1s silent buffer through transcribe so Core ML compiles
             // its kernels now, instead of on the user's first real hotkey press.
@@ -59,8 +72,10 @@ final class DictationController {
             _ = try? await whisper?.transcribe(audioArray: silent)
             fputs("Pre-warm complete. Ready.\n", stderr)
             loading = false
+            await MainActor.run { self.onReady?() }
         } catch {
             fputs("Failed to load Whisper model: \(error)\n", stderr)
+            await MainActor.run { self.onStatus?("Model load failed — check Console.") }
         }
     }
 
@@ -114,13 +129,18 @@ final class DictationController {
 
     private func finalizeAndPaste(samples: [Float], streamer: StreamingTranscriber?) async {
         guard let streamer else { return }
-        let text = await streamer.finalize(buffer: samples)
-        fputs("transcript: \"\(text)\"\n", stderr)
-        guard !text.isEmpty else { return }
+        let raw = await streamer.finalize(buffer: samples)
+        fputs("transcript: \"\(raw)\"\n", stderr)
+        guard !raw.isEmpty else { return }
         let audioSeconds = Double(samples.count) / 16_000
         await MainActor.run {
-            TextInjector.paste(text)
-            self.onSession?(audioSeconds, text)
+            // Apply user's vocabulary corrections (Workwell, uAttend, etc.).
+            let corrected = self.corrections?.apply(raw) ?? raw
+            let trimmed = corrected.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { return }
+            // Trailing space so successive dictations don't run together.
+            TextInjector.paste(trimmed + " ")
+            self.onSession?(audioSeconds, trimmed)
         }
     }
 }

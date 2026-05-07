@@ -18,6 +18,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var launchAtLoginItem: NSMenuItem!
     private let controller = DictationController()
     private let stats = SessionStats()
+    private let corrections = Corrections()
     private lazy var statsWindow = StatsWindowController(stats: stats)
 
     private var state: DictationState = .idle
@@ -51,6 +52,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: "q"))
         statusItem.menu = menu
 
+        controller.corrections = corrections
         controller.onStateChange = { [weak self] state in
             DispatchQueue.main.async {
                 self?.state = state
