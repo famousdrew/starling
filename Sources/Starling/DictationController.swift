@@ -123,6 +123,13 @@ final class DictationController {
             fputs("too short — skipping\n", stderr)
             return
         }
+        // Hold-with-no-speech: skip Whisper entirely. Otherwise the model
+        // very often hallucinates "Thank you." / "Thanks for watching." on
+        // silent input. 0.012 matches the streamer's silence threshold.
+        guard peak >= 0.012 else {
+            fputs("no speech detected — skipping\n", stderr)
+            return
+        }
 
         Task { await finalizeAndPaste(samples: samples, streamer: streamer) }
     }

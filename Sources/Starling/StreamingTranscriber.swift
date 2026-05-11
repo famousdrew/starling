@@ -23,7 +23,7 @@ actor StreamingTranscriber {
         whisper: WhisperKit,
         minChunkSeconds: Int = 8,
         maxChunkSeconds: Int = 25,
-        silenceMilliseconds: Int = 400,
+        silenceMilliseconds: Int = 800,
         silenceThreshold: Float = 0.012
     ) {
         self.whisper = whisper
@@ -95,12 +95,54 @@ actor StreamingTranscriber {
 
     private func transcribe(_ samples: [Float]) async {
         do {
-            let results = try await whisper.transcribe(audioArray: samples)
+            let options = DecodingOptions(promptTokens: priorContextTokens())
+            let results = try await whisper.transcribe(audioArray: samples, decodeOptions: options)
             let text = results.map(\.text).joined(separator: " ")
                 .trimmingCharacters(in: .whitespacesAndNewlines)
-            if !text.isEmpty { transcripts.append(text) }
+            if text.isEmpty { return }
+            if isSilenceHallucination(text) {
+                fputs("dropping silence hallucination: \"\(text)\"\n", stderr)
+                return
+            }
+            transcripts.append(text)
         } catch {
             fputs("stream chunk error: \(error)\n", stderr)
         }
     }
+
+    /// Tokens from the tail of prior chunks, used to condition the decoder so
+    /// it knows the speaker was mid-thought across a silence-split boundary.
+    /// Whisper's prompt window is ~224 tokens; cap conservatively.
+    private func priorContextTokens() -> [Int]? {
+        guard !transcripts.isEmpty, let tokenizer = whisper.tokenizer else { return nil }
+        let tail = String(transcripts.suffix(3).joined(separator: " ").suffix(600))
+        let tokens = tokenizer.encode(text: " " + tail)
+        guard !tokens.isEmpty else { return nil }
+        return Array(tokens.suffix(200))
+    }
+}
+
+/// Whisper's most common silence/no-speech hallucinations. When a chunk
+/// transcribes to exactly one of these (after normalization), drop it.
+private let silenceHallucinations: Set<String> = [
+    "thank you",
+    "thank you.",
+    "thanks for watching",
+    "thanks for watching!",
+    "thank you for watching",
+    "thanks",
+    "you",
+    "bye",
+    "okay",
+    "ok",
+    ".",
+    "..",
+    "...",
+]
+
+private func isSilenceHallucination(_ text: String) -> Bool {
+    let normalized = text
+        .lowercased()
+        .trimmingCharacters(in: CharacterSet(charactersIn: " .,!?\n\t"))
+    return silenceHallucinations.contains(normalized)
 }
