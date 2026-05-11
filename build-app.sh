@@ -11,9 +11,11 @@ swift build -c release
 APP="Starling.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS"
+mkdir -p "$APP/Contents/Resources"
 
 cp .build/release/Starling "$APP/Contents/MacOS/Starling"
 cp Info.plist "$APP/Contents/Info.plist"
+cp Resources/icon.png "$APP/Contents/Resources/icon.png"
 
 # Ad-hoc sign so TCC (privacy daemon) tracks a stable identity for this binary.
 codesign --force --deep --sign - "$APP"

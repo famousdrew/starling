@@ -67,9 +67,7 @@ private struct SplashView: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            Image(systemName: "mic.fill")
-                .font(.system(size: 40, weight: .medium))
-                .foregroundStyle(state.ready ? Color.accentColor : Color.secondary)
+            splashIcon
             Text("Starling")
                 .font(.system(size: 22, weight: .bold, design: .rounded))
             Text(state.status)
@@ -85,5 +83,23 @@ private struct SplashView: View {
             RoundedRectangle(cornerRadius: 16)
                 .stroke(.separator, lineWidth: 1)
         )
+    }
+
+    /// App icon from the bundle's Resources, falling back to an SF Symbol
+    /// when running via `swift run` (no bundle resources available).
+    @ViewBuilder
+    private var splashIcon: some View {
+        if let url = Bundle.main.url(forResource: "icon", withExtension: "png"),
+           let image = NSImage(contentsOf: url) {
+            Image(nsImage: image)
+                .resizable()
+                .interpolation(.high)
+                .scaledToFit()
+                .frame(width: 72, height: 72)
+        } else {
+            Image(systemName: "mic.fill")
+                .font(.system(size: 40, weight: .medium))
+                .foregroundStyle(state.ready ? Color.accentColor : Color.secondary)
+        }
     }
 }
